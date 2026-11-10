@@ -1,5 +1,5 @@
 /**
- * PixTransferScreen.tsx — Tela Nativa de Transferência PIX com Validação Biométrica (Face ID)
+ * PixTransferScreen.tsx — Tela Nativa de Transferência PIX com Validação Biométrica, Agendamento e Contatos Favoritos
  */
 
 import React, { useEffect, useState } from 'react';
@@ -17,12 +17,19 @@ import {
 import { BiometricSecurityService, type BiometricCapability } from '../../../core';
 import { type PixKeyType, PixKeyValidator } from '../../../domain';
 import type { NexoBffApiDataSource } from '../../../data';
+import { PixReceiptScreen, type PixReceiptData } from './PixReceiptScreen';
 
 interface PixTransferScreenProps {
   readonly bffClient: NexoBffApiDataSource;
   readonly onBack: () => void;
   readonly onTransferSuccess: (amount: number, recipientKey: string) => void;
 }
+
+const FAVORITE_CONTACTS = [
+  { name: 'Guilherme Queiroz', key: 'guilherme@eximiatech.com.br', type: 'EMAIL' as PixKeyType, initials: 'GQ' },
+  { name: 'Fornecedor Cloud', key: 'financeiro@cloudinfra.com', type: 'EMAIL' as PixKeyType, initials: 'FC' },
+  { name: 'Reserva Exímia', key: '025.620.561-24', type: 'CPF' as PixKeyType, initials: 'RE' },
+] as const;
 
 export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
   bffClient,
@@ -36,10 +43,8 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
   const [isValidKey, setIsValidKey] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [capabilities, setCapabilities] = useState<BiometricCapability | null>(null);
-  const [receipt, setReceipt] = useState<{
-    transferId: string;
-    endToEndId: string;
-  } | null>(null);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [receipt, setReceipt] = useState<PixReceiptData | null>(null);
 
   const biometricService = React.useMemo(
     () => new BiometricSecurityService(),
@@ -67,6 +72,12 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
     }
   };
 
+  const handleSelectFavorite = (fav: typeof FAVORITE_CONTACTS[number]) => {
+    setPixKey(fav.key);
+    setKeyType(fav.type);
+    setIsValidKey(true);
+  };
+
   const parseAmountNumber = (): number => {
     const clean = amountRaw.replace(/\D/g, '');
     return clean ? parseInt(clean, 10) / 100 : 0;
@@ -90,7 +101,7 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
       return;
     }
 
-    // 1. AUTORIZAÇÃO BIOMÉTRICA OBRIGATÓRIA (FACE ID / TOUCH ID)
+    // 1. AUTORIZAÇÃO BIOMÉTRICA OBRIGATÓRIA (FACE ID / DIGITAL)
     const authResult = await biometricService.authenticatePixTransfer({
       amountFormatted: formatCurrency(amount),
       recipientName: pixKey,
@@ -107,67 +118,42 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
       amount,
       pixKey,
       pixKeyType: keyType,
-      description: description.trim() || 'Transferência PIX Nexo',
+      description: description.trim() || (isScheduled ? 'PIX Agendado Nexo' : 'Transferência PIX Nexo'),
     });
     setIsLoading(false);
 
     if (transferResult.isRight()) {
-      setReceipt({
-        transferId: transferResult.value.transferId || `tx-${Date.now()}`,
+      const receiptData: PixReceiptData = {
+        transferId: transferResult.value.transferId || `tx-pix-${Date.now()}`,
         endToEndId:
           transferResult.value.endToEndId ||
           `E00038166${new Date().toISOString().replace(/\D/g, '')}`,
-      });
+        amount,
+        recipientName: pixKey.includes('@') ? pixKey.split('@')[0] ?? pixKey : 'Beneficiário PIX',
+        recipientKey: pixKey,
+        recipientBank: 'Instituição Bancária Autorizada (BACEN)',
+        payerName: 'Guilherme Ribeiro',
+        timestampIso: new Date().toISOString(),
+        description: description.trim() || undefined,
+      };
+
+      setReceipt(receiptData);
       onTransferSuccess(amount, pixKey);
     } else {
       Alert.alert('Falha na Transferência', transferResult.value.message);
     }
   };
 
+  // Se tiver recibo pronto, renderiza a tela oficial com compartilhamento nativo
   if (receipt) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.receiptContainer}>
-          <View style={styles.successIconBadge}>
-            <Text style={styles.successIconText}>✓</Text>
-          </View>
-          <Text style={styles.receiptTitle}>PIX Enviado com Sucesso</Text>
-          <Text style={styles.receiptAmount}>
-            {formatCurrency(parseAmountNumber())}
-          </Text>
-
-          <View style={styles.receiptCard}>
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Destino (Chave)</Text>
-              <Text style={styles.receiptValue}>{pixKey}</Text>
-            </View>
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Tipo de Chave</Text>
-              <Text style={styles.receiptValue}>{keyType}</Text>
-            </View>
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>ID da Transação</Text>
-              <Text style={styles.receiptValueSmall}>{receipt.transferId}</Text>
-            </View>
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>End-to-End BACEN</Text>
-              <Text style={styles.receiptValueSmall}>{receipt.endToEndId}</Text>
-            </View>
-            <View style={styles.receiptRow}>
-              <Text style={styles.receiptLabel}>Data e Hora</Text>
-              <Text style={styles.receiptValue}>{new Date().toLocaleString('pt-BR')}</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={onBack}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryButtonText}>Voltar ao Início</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <PixReceiptScreen
+        receipt={receipt}
+        onClose={() => {
+          setReceipt(null);
+          onBack();
+        }}
+      />
     );
   }
 
@@ -183,45 +169,89 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
         <View style={{ width: 60 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Campo de Valor */}
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* Banner Ilustrado Limpo */}
+        <View style={styles.bannerBox}>
+          <Text style={styles.bannerEmoji}>⚡</Text>
+          <Text style={styles.bannerTitle}>PIX Instantâneo 24/7</Text>
+          <Text style={styles.bannerSub}>Envio em segundos via Banco Central (BACEN)</Text>
+        </View>
+
+        {/* Card de Valor */}
         <View style={styles.card}>
           <Text style={styles.inputLabel}>QUAL O VALOR DO PIX?</Text>
           <TextInput
             style={styles.amountInput}
-            keyboardType="numeric"
             placeholder="R$ 0,00"
             placeholderTextColor="#4b5563"
+            keyboardType="numeric"
             value={amountRaw ? formatCurrency(currentAmount) : ''}
-            onChangeText={(txt) => setAmountRaw(txt.replace(/\D/g, ''))}
+            onChangeText={(val) => setAmountRaw(val)}
           />
         </View>
 
-        {/* Campo de Chave */}
+        {/* Contatos Frequentes / Favoritos */}
+        <View style={styles.card}>
+          <Text style={styles.inputLabel}>CONTATOS FAVORITOS</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.favoritesRow}>
+            {FAVORITE_CONTACTS.map((fav) => (
+              <TouchableOpacity
+                key={fav.key}
+                style={[styles.favChip, pixKey === fav.key && styles.favChipActive]}
+                onPress={() => handleSelectFavorite(fav)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.favAvatar}>
+                  <Text style={styles.favAvatarText}>{fav.initials}</Text>
+                </View>
+                <Text style={styles.favName}>{fav.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Card de Chave PIX */}
         <View style={styles.card}>
           <View style={styles.labelRow}>
             <Text style={styles.inputLabel}>CHAVE PIX DO DESTINATÁRIO</Text>
             {isValidKey && (
-              <Text style={styles.validBadge}>✓ {keyType}</Text>
+              <Text style={styles.validKeyBadge}>✓ {keyType}</Text>
             )}
           </View>
           <TextInput
-            style={[styles.textInput, isValidKey && styles.validInput]}
-            placeholder="CPF, CNPJ, Celular, E-mail ou EVP"
+            style={styles.textInput}
+            placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
             placeholderTextColor="#4b5563"
+            autoCapitalize="none"
             value={pixKey}
             onChangeText={handleKeyChange}
-            autoCapitalize="none"
-            autoCorrect={false}
           />
+        </View>
+
+        {/* Agendamento de PIX */}
+        <View style={styles.card}>
+          <View style={styles.scheduleRow}>
+            <div>
+              <Text style={styles.inputLabel}>DATA DO PAGAMENTO</Text>
+              <Text style={styles.scheduleSubText}>
+                {isScheduled ? 'Agendado para o próximo dia útil' : 'Transferir imediatamente'}
+              </Text>
+            </div>
+            <TouchableOpacity
+              style={[styles.toggleBtn, isScheduled && styles.toggleBtnActive]}
+              onPress={() => setIsScheduled(!isScheduled)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.toggleBtnText}>
+                {isScheduled ? '📅 Agendado' : '⚡ Agora'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Campo Descrição */}
         <View style={styles.card}>
-          <Text style={styles.inputLabel}>MENSAGEM / IDENTIFICAÇÃO (OPCIONAL)</Text>
+          <Text style={styles.inputLabel}>IDENTIFICAÇÃO (OPCIONAL)</Text>
           <TextInput
             style={styles.textInput}
             placeholder="Ex.: Aluguel, almoço, serviço"
@@ -245,11 +275,7 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
                   : 'Autenticação Bancária de Segurança'}
             </Text>
             <Text style={styles.securityBannerText}>
-              {capabilities?.primaryType === 'FACIAL_RECOGNITION'
-                ? 'A transferência será assinada com Face ID e liquidada no Asaas em segundos.'
-                : capabilities?.primaryType === 'FINGERPRINT'
-                  ? 'A transferência será assinada via sensor biométrico de digital e liquidada no Asaas em segundos.'
-                  : 'A transferência será assinada com biometria ou PIN bancário e liquidada no Asaas em segundos.'}
+              A transferência será assinada com autenticação biométrica e liquidada no Asaas em segundos.
             </Text>
           </View>
         </View>
@@ -268,7 +294,7 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
             <ActivityIndicator color="#ffffff" />
           ) : (
             <Text style={styles.primaryButtonText}>
-              {capabilities?.icon ?? '🔒'} Autorizar com {capabilities?.label ?? 'Face ID / Biometria'}
+              {capabilities?.icon ?? '🔒'} {isScheduled ? 'Agendar PIX' : 'Transferir com'} {capabilities?.label ?? 'Face ID'}
             </Text>
           )}
         </TouchableOpacity>
@@ -289,32 +315,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#1a1d24',
+    borderColor: '#1f242d',
   },
   backButton: {
     paddingVertical: 6,
     paddingHorizontal: 8,
   },
   backButtonText: {
-    color: '#ff5500',
+    color: '#9ca3af',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
   },
   topBarTitle: {
     color: '#ffffff',
     fontSize: 15,
     fontWeight: '700',
+    letterSpacing: -0.3,
   },
-  scrollContent: {
-    padding: 20,
-    gap: 16,
+  content: {
+    padding: 16,
+    gap: 14,
+  },
+  bannerBox: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  bannerEmoji: {
+    fontSize: 32,
+    marginBottom: 4,
+  },
+  bannerTitle: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  bannerSub: {
+    color: '#9ca3af',
+    fontSize: 12,
   },
   card: {
-    backgroundColor: '#12141a',
-    borderRadius: 20,
-    padding: 18,
+    backgroundColor: '#12151c',
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: '#1d212b',
+    borderColor: '#1f242d',
+  },
+  inputLabel: {
+    color: '#9ca3af',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: 8,
   },
   labelRow: {
     flexDirection: 'row',
@@ -322,49 +373,100 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  inputLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8e929a',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  validBadge: {
+  validKeyBadge: {
     color: '#10b981',
     fontSize: 11,
     fontWeight: '700',
   },
   amountInput: {
+    color: '#ffffff',
     fontSize: 32,
     fontWeight: '700',
-    color: '#ffffff',
-    paddingVertical: 4,
+    paddingVertical: 8,
   },
   textInput: {
-    backgroundColor: '#171a22',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
     color: '#ffffff',
     fontSize: 14,
-    borderWidth: 1,
-    borderColor: '#252936',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: '#2d3340',
   },
-  validInput: {
-    borderColor: '#10b981',
+  favoritesRow: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  favChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#1a1f2c',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#262d3d',
+  },
+  favChipActive: {
+    borderColor: '#ff5500',
+    backgroundColor: 'rgba(255, 85, 0, 0.1)',
+  },
+  favAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#ff5500',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favAvatarText: {
+    color: '#ffffff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  favName: {
+    color: '#e5e7eb',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  scheduleSubText: {
+    color: '#6b7280',
+    fontSize: 11,
+  },
+  toggleBtn: {
+    backgroundColor: '#1a1f2c',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#262d3d',
+  },
+  toggleBtnActive: {
+    borderColor: '#ff5500',
+    backgroundColor: 'rgba(255, 85, 0, 0.15)',
+  },
+  toggleBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   securityBanner: {
     flexDirection: 'row',
-    gap: 12,
-    backgroundColor: 'rgba(255, 85, 0, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 85, 0, 0.25)',
-    borderRadius: 16,
-    padding: 14,
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 85, 0, 0.08)',
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 85, 0, 0.2)',
   },
   securityBannerIcon: {
-    fontSize: 22,
+    fontSize: 20,
   },
   securityBannerTitle: {
     color: '#ff5500',
@@ -375,84 +477,27 @@ const styles = StyleSheet.create({
   securityBannerText: {
     color: '#9ca3af',
     fontSize: 11,
-    lineHeight: 16,
+    lineHeight: 15,
   },
   primaryButton: {
     backgroundColor: '#ff5500',
-    borderRadius: 24,
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
+    shadowColor: '#ff5500',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   disabledButton: {
-    opacity: 0.4,
+    backgroundColor: '#262d3d',
+    shadowOpacity: 0,
   },
   primaryButtonText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-  },
-  receiptContainer: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  successIconBadge: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#10b981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  successIconText: {
-    color: '#ffffff',
-    fontSize: 32,
-    fontWeight: '700',
-  },
-  receiptTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 6,
-  },
-  receiptAmount: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#ff5500',
-    marginBottom: 24,
-  },
-  receiptCard: {
-    width: '100%',
-    backgroundColor: '#12141a',
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#1d212b',
-    gap: 14,
-    marginBottom: 24,
-  },
-  receiptRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  receiptLabel: {
-    color: '#8e929a',
-    fontSize: 12,
-  },
-  receiptValue: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  receiptValueSmall: {
-    color: '#9ca3af',
-    fontSize: 10,
-    maxWidth: '55%',
-    textAlign: 'right',
   },
 });

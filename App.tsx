@@ -25,6 +25,7 @@ import { CardsScreen } from './src/presentation/mobile/screens/CardsScreen';
 import { StreetModeProtectionScreen } from './src/presentation/mobile/screens/StreetModeProtectionScreen';
 import { PixQrScannerScreen } from './src/presentation/mobile/screens/PixQrScannerScreen';
 import { PierreAssistantScreen } from './src/presentation/mobile/screens/PierreAssistantScreen';
+import { SavingsBoxesScreen } from './src/presentation/mobile/screens/SavingsBoxesScreen';
 
 export const nexoBffClient = new NexoBffApiDataSource(
   'https://nexo.eximiatech.com.br',
@@ -39,7 +40,8 @@ type ActiveScreen =
   | 'STATEMENT'
   | 'CARDS'
   | 'STREET_MODE'
-  | 'PIERRE_ASSISTANT';
+  | 'PIERRE_ASSISTANT'
+  | 'SAVINGS_BOXES';
 
 export default function App() {
   const [isLocked, setIsLocked] = useState(true);
@@ -74,7 +76,6 @@ export default function App() {
         <StatusBar style="light" />
         <AppLockScreen
           userName="Guilherme"
-          expectedPin="1984"
           onUnlockSuccess={() => setIsLocked(false)}
         />
       </View>
@@ -98,6 +99,7 @@ export default function App() {
           onOpenStreetMode={() => setCurrentScreen('STREET_MODE')}
           onOpenQrScanner={() => setCurrentScreen('PIX_QR_SCANNER')}
           onOpenPierre={() => setCurrentScreen('PIERRE_ASSISTANT')}
+          onOpenSavingsBoxes={() => setCurrentScreen('SAVINGS_BOXES')}
           onLockApp={() => setIsLocked(true)}
         />
       )}
@@ -154,6 +156,13 @@ export default function App() {
 
       {currentScreen === 'PIERRE_ASSISTANT' && (
         <PierreAssistantScreen onBack={() => setCurrentScreen('DASHBOARD')} />
+      )}
+
+      {currentScreen === 'SAVINGS_BOXES' && (
+        <SavingsBoxesScreen
+          onBack={() => setCurrentScreen('DASHBOARD')}
+          accountBalance={1500.0}
+        />
       )}
     </View>
   );

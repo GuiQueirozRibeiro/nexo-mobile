@@ -43,6 +43,7 @@ interface DashboardScreenProps {
   readonly onOpenStreetMode: () => void;
   readonly onOpenQrScanner: () => void;
   readonly onOpenPierre: () => void;
+  readonly onOpenSavingsBoxes: () => void;
   readonly onLockApp: () => void;
 }
 
@@ -57,6 +58,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onOpenStreetMode,
   onOpenQrScanner,
   onOpenPierre,
+  onOpenSavingsBoxes,
   onLockApp,
 }) => {
   const [hideBalances, setHideBalances] = useState(false);
@@ -230,6 +232,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           {[
             { id: 'pix', label: 'Transferir Pix', icon: '⚡', onPress: onOpenPix, badge: 'Biometria' },
             { id: 'scan', label: 'Pagar QR', icon: '📷', onPress: onOpenQrScanner },
+            { id: 'boxes', label: 'Caixinhas', icon: '📦', onPress: onOpenSavingsBoxes, badge: '100% CDI' },
             { id: 'pierre', label: 'Pierre IA', icon: '✨', onPress: onOpenPierre, badge: 'IA' },
             { id: 'statement', label: 'Extrato', icon: '📄', onPress: onOpenStatement },
             { id: 'cards', label: 'Cartões', icon: '💳', onPress: onOpenCards },
@@ -279,6 +282,31 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <Text style={styles.kycBannerArrow}>→</Text>
           </TouchableOpacity>
         )}
+
+        {/* Card Caixinhas Nexo */}
+        <TouchableOpacity
+          style={styles.savingsCard}
+          onPress={onOpenSavingsBoxes}
+          activeOpacity={0.8}
+        >
+          <View style={styles.savingsCardLeft}>
+            <View style={styles.savingsIconContainer}>
+              <Text style={styles.savingsIcon}>📦</Text>
+            </View>
+            <View>
+              <View style={styles.savingsBadgeRow}>
+                <Text style={styles.savingsCardTitle}>Caixinhas Nexo</Text>
+                <View style={styles.savingsCdiPill}>
+                  <Text style={styles.savingsCdiPillText}>100% CDI</Text>
+                </View>
+              </View>
+              <Text style={styles.savingsCardSubtitle}>
+                R$ 1.290,57 guardados • Rendendo centavos diariamente
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.savingsCardArrow}>→</Text>
+        </TouchableOpacity>
 
         {/* Seção Bancos Conectados */}
         <View style={styles.section}>
@@ -577,6 +605,68 @@ const styles = StyleSheet.create({
   kycBannerArrow: {
     color: '#ff5500',
     fontSize: 18,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  savingsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#12141c',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#1f232f',
+  },
+  savingsCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  savingsIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 85, 0, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  savingsIcon: {
+    fontSize: 22,
+  },
+  savingsBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  savingsCardTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  savingsCdiPill: {
+    backgroundColor: 'rgba(0, 210, 106, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 210, 106, 0.4)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  savingsCdiPillText: {
+    color: '#00d26a',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  savingsCardSubtitle: {
+    color: '#8e929a',
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  savingsCardArrow: {
+    color: '#8e929a',
+    fontSize: 16,
     fontWeight: '700',
     marginLeft: 8,
   },

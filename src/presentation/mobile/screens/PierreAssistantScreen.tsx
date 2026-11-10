@@ -62,14 +62,18 @@ export const PierreAssistantScreen: React.FC<PierreAssistantScreenProps> = ({
 
       if (lower.includes('saúde') || lower.includes('score')) {
         reply = 'Sua Saúde Financeira está em 100/100! Suas contas estão equilibradas, sem dívidas ativas e com os limites diurnos e noturnos do BACEN rigorosamente calibrados.';
+      } else if (lower.includes('caixinha') || lower.includes('cdi') || lower.includes('rendimento')) {
+        reply = 'Suas Caixinhas Nexo rendem 100% do CDI todos os dias úteis! O rendimento sobe em centavos de forma contínua e previsível. Para resgates imediatos de rotina, a liquidez de segurança cobre até R$ 20,00 por operação na janela instantânea.';
+      } else if (lower.includes('gasto') || lower.includes('categoria') || lower.includes('distribui')) {
+        reply = 'Auditando seu mês atual: a maior fatia de saídas está em Alimentação (42%), seguida de Moradia (31%) e Transporte (18%). Seu saldo líquido consolidado está positivo!';
       } else if (lower.includes('duplicad') || lower.includes('assinatura')) {
         reply = 'Não detectei cobranças duplicadas este mês. Seu radar de assinaturas está limpo e monitorando contratos recorrentes.';
-      } else if (lower.includes('limite') || lower.includes('bacen') || lower.includes('rua')) {
-        reply = 'Seu Limite Diurno é R$ 10.000,00 e o Limite Noturno é R$ 1.000,00 (Resolução BCB nº 142/2021). O Modo Rua está disponível para travar transferências em até R$ 200,00.';
+      } else if (lower.includes('limite') || lower.includes('bacen') || lower.includes('rua') || lower.includes('trava')) {
+        reply = 'Seu Limite Diurno é R$ 10.000,00 e o Noturno é R$ 1.000,00 (Resolução BCB nº 142/2021). O Modo Rua trava saídas em até R$ 200,00 fora de casa, e os resgates de caixinhas contam com proteção de liquidez programada.';
       } else if (lower.includes('economizar') || lower.includes('dica')) {
-        reply = 'Sugiro concentrar seus gastos no cartão virtual Nexo Platinum para acumular pontos e manter seu fluxo de caixa rendendo no CDI enquanto a fatura não vence.';
+        reply = 'Dica da Nexo IA: Aporte o excesso de caixa na "Reserva de Emergência" logo no dia que receber seu pagamento. Assim seu dinheiro já começa a render CDI desde o primeiro dia.';
       } else {
-        reply = `Entendido! Analisei seu livro-razão sobre "${text}" e sincronizei os parâmetros via Open Finance.`;
+        reply = `Entendido! Analisei seu livro-razão sobre "${text}" e sincronizei os parâmetros via Open Finance & Core Banking Asaas.`;
       }
 
       const pierreMsg: ChatMessage = {
@@ -155,9 +159,9 @@ export const PierreAssistantScreen: React.FC<PierreAssistantScreenProps> = ({
             <Text style={styles.suggestionsTitle}>PERGUNTAS FREQUENTES</Text>
             <View style={styles.suggestionsGrid}>
               {[
-                '📊 Como está minha saúde financeira?',
-                '🔍 Tenho cobranças duplicadas?',
-                '🛡️ Como estão meus limites BACEN?',
+                '📊 Analisar gastos deste mês',
+                '📦 Como funcionam as Caixinhas e CDI?',
+                '🛡️ Qual a trava de liquidez de resgate?',
                 '💡 Dicas para economizar no mês',
               ].map((s) => (
                 <TouchableOpacity

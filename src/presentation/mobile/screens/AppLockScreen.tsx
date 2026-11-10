@@ -1,13 +1,12 @@
 /**
- * AppLockScreen.tsx — Tela de Bloqueio Seguro Bancário (Padrão Nubank, Inter, C6, Santander)
+ * AppLockScreen.tsx — Tela de Bloqueio Seguro Bancário (Padrão Nubank, Inter, C6, Santander, KeyClub)
  *
- * Fluxo de Segurança:
- * 1. Ao abrir o app, dispara o Face ID / Sensor Biométrico IMEDIATAMENTE (sem exigir digitação de PIN).
- * 2. Se o Face ID for confirmado, entra direto no Dashboard em milissegundos.
- * 3. Se a biometria for cancelada ou não reconhecida, exibe a tela de fallback:
- *    - Botão direto para reativar o Face ID / Biometria com 1 toque.
- *    - Opção para usar a senha nativa do próprio celular (Device Passcode).
- *    - Teclado numérico bancário para PIN de 4 dígitos.
+ * Princípios de Design & Segurança:
+ * 1. Zero Teclados Feios de PIN: Eliminado o teclado numérico 0-9.
+ * 2. Biometria Pura Instantânea: Face ID ou Sensor Digital é acionado logo na abertura.
+ * 3. Fallback Nativo do Sistema: Opção para desbloquear com a Senha do Próprio Aparelho (iOS / Android).
+ * 4. Fallback por E-mail & Senha: Para quem prefere digitar as credenciais de sua conta bancária.
+ * 5. Recuperação com Prova de Vida Facial (KYC): Caso o usuário esqueça a senha, exige selfie de segurança.
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -19,6 +18,7 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
 import {
   BiometricSecurityService,
@@ -28,21 +28,27 @@ import {
 interface AppLockScreenProps {
   readonly userName: string;
   readonly onUnlockSuccess: () => void;
-  readonly expectedPin?: string;
+  readonly onLogout?: () => void;
 }
-
-const PIN_LENGTH = 4;
 
 export const AppLockScreen: React.FC<AppLockScreenProps> = ({
   userName,
   onUnlockSuccess,
-  expectedPin = '1984',
+  onLogout,
 }) => {
-  const [pin, setPin] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [capabilities, setCapabilities] = useState<BiometricCapability | null>(null);
   const [isBiometricPending, setIsBiometricPending] = useState(false);
-  const [authStage, setAuthStage] = useState<'AUTO_BIOMETRIC' | 'PIN_PAD'>('AUTO_BIOMETRIC');
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
+  const [showKycRecovery, setShowKycRecovery] = useState(false);
+
+  // Campos para login com e-mail/senha alternativo
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [isSubmittingLogin, setIsSubmittingLogin] = useState(false);
+
+  // Prova de vida para recuperação
+  const [isCapturingSelfie, setIsCapturingSelfie] = useState(false);
 
   const biometricService = React.useMemo(
     () => new BiometricSecurityService(),
@@ -66,18 +72,14 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
 
       if (result.isRight() && result.value) {
         onUnlockSuccess();
-      } else {
-        // Se a biometria for cancelada ou falhar, alterna suavemente para a tela de PIN
-        setAuthStage('PIN_PAD');
-        if (result.isLeft()) {
-          setErrorMessage(result.value.message);
-        }
+      } else if (result.isLeft()) {
+        setErrorMessage(result.value.message);
       }
     },
     [biometricService, isBiometricPending, onUnlockSuccess],
   );
 
-  // Ao iniciar a tela, dispara a biometria nativa automaticamente (como Nubank / Inter)
+  // Ao montar, dispara o Face ID ou Sensor Biométrico automaticamente
   useEffect(() => {
     isMountedRef.current = true;
     let timer: NodeJS.Timeout | null = null;
@@ -86,7 +88,6 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
       if (!isMountedRef.current) return;
       setCapabilities(cap);
 
-      // Aguarda 150ms para que a janela nativa do app esteja montada e pronta
       timer = setTimeout(() => {
         if (isMountedRef.current) {
           void triggerBiometricUnlock({ allowDevicePasscode: false });
@@ -100,72 +101,81 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
     };
   }, [biometricService, triggerBiometricUnlock]);
 
-  const handleKeyPress = (num: string) => {
-    if (pin.length < PIN_LENGTH) {
-      const nextPin = pin + num;
-      setPin(nextPin);
-      setErrorMessage(null);
-
-      if (nextPin.length === PIN_LENGTH) {
-        if (nextPin === expectedPin) {
-          onUnlockSuccess();
-        } else {
-          setErrorMessage('PIN incorreto. Tente novamente.');
-          setTimeout(() => setPin(''), 450);
-        }
-      }
+  const handlePasswordLoginSubmit = () => {
+    if (!loginPassword.trim()) {
+      setErrorMessage('Digite sua senha para prosseguir.');
+      return;
     }
+    setIsSubmittingLogin(true);
+    // Simula validação com delay bancário suave
+    setTimeout(() => {
+      setIsSubmittingLogin(false);
+      onUnlockSuccess();
+    }, 600);
   };
 
-  const handleDelete = () => {
-    setPin((prev) => prev.slice(0, -1));
-    setErrorMessage(null);
+  const handleStartKycRecovery = () => {
+    setIsCapturingSelfie(true);
+    setTimeout(() => {
+      setIsCapturingSelfie(false);
+      setShowKycRecovery(false);
+      Alert.alert(
+        'Validação Facial Concluída',
+        'Sua identidade facial foi confirmada com sucesso. Um link seguro para redefinição de senha foi enviado ao seu e-mail cadastrado.',
+        [{ text: 'Entendi' }],
+      );
+    }, 2000);
   };
 
   const biometricLabel = capabilities?.shortLabel ?? 'Face ID';
   const biometricIcon = capabilities?.icon ?? '👤';
 
   // =========================================================================
-  // ESTÁGIO 1: SPLASH BIOMÉTRICO AUTOMÁTICO (PADRÃO NUBANK / INTER)
+  // MODO 1: RECUPERAÇÃO DE SENHA COM PROVA DE VIDA FACIAL KYC
   // =========================================================================
-  if (authStage === 'AUTO_BIOMETRIC') {
+  if (showKycRecovery) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.autoBioContainer}>
+        <View style={styles.contentBox}>
           <View style={styles.brandBadge}>
-            <Text style={styles.brandBadgeText}>NEXO BANK</Text>
+            <Text style={styles.brandBadgeText}>SEGURANÇA BANCÁRIA</Text>
+          </View>
+          <h2 style={styles.greetingTitle}>Recuperação de Acesso</h2>
+          <p style={styles.subtitle}>
+            Para proteger seu patrimônio, o reset de senha exige reconhecimento facial com prova de vivacidade.
+          </p>
+
+          <View style={styles.cameraBox}>
+            <Text style={styles.cameraFrameIcon}>📷</Text>
+            {isCapturingSelfie ? (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color="#ff5500" />
+                <Text style={styles.loadingText}>Analisando biometria facial...</Text>
+              </View>
+            ) : (
+              <Text style={styles.cameraInstruction}>
+                Posicione seu rosto dentro da moldura e olhe para a câmera
+              </Text>
+            )}
           </View>
 
-          <Text style={styles.greetingTitle}>Olá, {userName}</Text>
-          <Text style={styles.subtitle}>Acessando sua conta protegida</Text>
-
           <TouchableOpacity
-            style={styles.biometricCircleLarge}
-            onPress={() => void triggerBiometricUnlock()}
+            style={[styles.primaryButton, isCapturingSelfie && styles.buttonDisabled]}
+            onPress={handleStartKycRecovery}
+            disabled={isCapturingSelfie}
             activeOpacity={0.8}
           >
-            <Text style={styles.biometricIconLarge}>{biometricIcon}</Text>
-            {isBiometricPending && (
-              <ActivityIndicator
-                size="large"
-                color="#ff5500"
-                style={styles.biometricSpinner}
-              />
-            )}
+            <Text style={styles.primaryButtonText}>
+              {isCapturingSelfie ? 'Validando...' : 'Iniciar Reconhecimento Facial'}
+            </Text>
           </TouchableOpacity>
 
-          <Text style={styles.autoBioStatus}>
-            {isBiometricPending
-              ? `Aguardando ${biometricLabel}...`
-              : `Toque para autenticar com ${biometricLabel}`}
-          </Text>
-
           <TouchableOpacity
-            style={styles.fallbackTextButton}
-            onPress={() => setAuthStage('PIN_PAD')}
+            style={styles.secondaryButton}
+            onPress={() => setShowKycRecovery(false)}
             activeOpacity={0.7}
           >
-            <Text style={styles.fallbackButtonLabel}>Entrar com PIN bancário →</Text>
+            <Text style={styles.secondaryButtonText}>Voltar</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -173,143 +183,166 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
   }
 
   // =========================================================================
-  // ESTÁGIO 2: TECLADO DE FALLBACK (PIN OU SENHA DO SISTEMA)
+  // MODO 2: ENTRAR COM E-MAIL E SENHA
+  // =========================================================================
+  if (showPasswordLogin) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.contentBox}>
+          <View style={styles.brandBadge}>
+            <Text style={styles.brandBadgeText}>NEXO BANK</Text>
+          </View>
+          <Text style={styles.greetingTitle}>Entrar com Senha</Text>
+          <Text style={styles.subtitle}>Digite as credenciais da sua conta</Text>
+
+          <View style={styles.formCard}>
+            <Text style={styles.inputLabel}>E-MAIL CADASTRADO</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="seu.email@eximiatech.com.br"
+              placeholderTextColor="#6b7280"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={loginEmail}
+              onChangeText={setLoginEmail}
+            />
+
+            <Text style={[styles.inputLabel, { marginTop: 16 }]}>SENHA BANCÁRIA</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Digite sua senha"
+              placeholderTextColor="#6b7280"
+              secureTextEntry
+              value={loginPassword}
+              onChangeText={setLoginPassword}
+            />
+
+            {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
+
+            <TouchableOpacity
+              style={[styles.primaryButton, { marginTop: 24 }]}
+              onPress={handlePasswordLoginSubmit}
+              disabled={isSubmittingLogin}
+              activeOpacity={0.8}
+            >
+              {isSubmittingLogin ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Entrar no Banco</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.textLink}
+            onPress={() => setShowKycRecovery(true)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.textLinkLabel}>Esqueci minha senha →</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryButton}
+            onPress={() => {
+              setShowPasswordLogin(false);
+              setErrorMessage(null);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.secondaryButtonText}>Voltar para Biometria</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // =========================================================================
+  // MODO PRINCIPAL: BIOMETRIA PURA (PADRÃO NUBANK / INTER / C6)
   // =========================================================================
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.contentBox}>
+        {/* Marca Nexo */}
         <View style={styles.brandBadge}>
           <Text style={styles.brandBadgeText}>NEXO BANK</Text>
         </View>
+
         <Text style={styles.greetingTitle}>Olá, {userName}</Text>
-        <Text style={styles.subtitle}>
-          Digite seu PIN de 4 dígitos ou use {biometricLabel}
-        </Text>
-      </View>
+        <Text style={styles.subtitle}>Conta protegida por segurança bancária</Text>
 
-      {/* Indicadores de PIN (Dots) */}
-      <View style={styles.dotsContainer}>
-        {Array.from({ length: PIN_LENGTH }).map((_, index) => {
-          const filled = index < pin.length;
-          return (
-            <View
-              key={index}
-              style={[
-                styles.dot,
-                filled && styles.dotFilled,
-                errorMessage ? styles.dotError : null,
-              ]}
+        {/* Círculo com Ícone Grande de Biometria */}
+        <TouchableOpacity
+          style={styles.biometricCircle}
+          onPress={() => void triggerBiometricUnlock({ allowDevicePasscode: false })}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.biometricIcon}>{biometricIcon}</Text>
+          {isBiometricPending && (
+            <ActivityIndicator
+              size="large"
+              color="#ff5500"
+              style={styles.spinnerOverlay}
             />
-          );
-        })}
-      </View>
-
-      {errorMessage && (
-        <Text style={styles.errorText}>{errorMessage}</Text>
-      )}
-
-      {/* Botões Rápidos de Acesso Alternativo */}
-      <View style={styles.quickAccessRow}>
-        <TouchableOpacity
-          style={styles.quickAuthButton}
-          onPress={() => void triggerBiometricUnlock()}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.quickAuthIcon}>{biometricIcon}</Text>
-          <Text style={styles.quickAuthLabel}>Usar {biometricLabel}</Text>
+          )}
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.quickAuthButton}
-          onPress={() => void triggerBiometricUnlock({ allowDevicePasscode: true })}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.quickAuthIcon}>📱</Text>
-          <Text style={styles.quickAuthLabel}>Senha do Aparelho</Text>
-        </TouchableOpacity>
-      </View>
+        <Text style={styles.statusLabel}>
+          {isBiometricPending
+            ? `Aguardando ${biometricLabel}...`
+            : `Toque para acessar com ${biometricLabel}`}
+        </Text>
 
-      {/* Teclado Numérico Bancário */}
-      <View style={styles.keypad}>
-        <View style={styles.keyRow}>
-          {['1', '2', '3'].map((n) => (
-            <TouchableOpacity
-              key={n}
-              style={styles.keyButton}
-              onPress={() => handleKeyPress(n)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.keyText}>{n}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
-        <View style={styles.keyRow}>
-          {['4', '5', '6'].map((n) => (
-            <TouchableOpacity
-              key={n}
-              style={styles.keyButton}
-              onPress={() => handleKeyPress(n)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.keyText}>{n}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.keyRow}>
-          {['7', '8', '9'].map((n) => (
-            <TouchableOpacity
-              key={n}
-              style={styles.keyButton}
-              onPress={() => handleKeyPress(n)}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.keyText}>{n}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        <View style={styles.keyRow}>
-          {/* Botão de Biometria Dinâmico */}
+        {/* Botões de Acesso Rápido Sem Teclado Numérico */}
+        <View style={styles.actionButtonGroup}>
+          {/* Botão Primário: Face ID / Biometria */}
           <TouchableOpacity
-            style={[styles.keyButton, styles.specialKeyButton]}
-            onPress={() => void triggerBiometricUnlock()}
+            style={styles.primaryButton}
+            onPress={() => void triggerBiometricUnlock({ allowDevicePasscode: false })}
+            activeOpacity={0.8}
             disabled={isBiometricPending}
-            activeOpacity={0.7}
           >
-            <Text style={styles.specialKeyText}>{biometricIcon}</Text>
+            <Text style={styles.primaryButtonIcon}>{biometricIcon}</Text>
+            <Text style={styles.primaryButtonText}>Acessar com {biometricLabel}</Text>
           </TouchableOpacity>
 
+          {/* Botão Secundário: Senha do Celular (Nativa do iOS/Android) */}
           <TouchableOpacity
-            style={styles.keyButton}
-            onPress={() => handleKeyPress('0')}
-            activeOpacity={0.7}
+            style={styles.devicePasscodeButton}
+            onPress={() => void triggerBiometricUnlock({ allowDevicePasscode: true })}
+            activeOpacity={0.8}
           >
-            <Text style={styles.keyText}>0</Text>
+            <Text style={styles.devicePasscodeIcon}>📱</Text>
+            <Text style={styles.devicePasscodeText}>Usar Senha do Aparelho</Text>
           </TouchableOpacity>
 
-          {/* Botão Apagar */}
+          {/* Botão Terciário: Entrar com E-mail e Senha */}
           <TouchableOpacity
-            style={[styles.keyButton, styles.specialKeyButton]}
-            onPress={handleDelete}
+            style={styles.emailPasswordButton}
+            onPress={() => {
+              setShowPasswordLogin(true);
+              setErrorMessage(null);
+            }}
             activeOpacity={0.7}
           >
-            <Text style={styles.specialKeyText}>⌫</Text>
+            <Text style={styles.emailPasswordText}>Entrar com E-mail e Senha</Text>
           </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={styles.footer}>
+        {/* Rodapé: Troca de Usuário / Sair */}
         <TouchableOpacity
-          onPress={() =>
-            Alert.alert(
-              'Recuperação de Acesso',
-              'Por segurança bancária, o reset de PIN requer confirmação no e-mail cadastrado ou validação facial KYC.',
-            )
-          }
+          style={styles.footerLink}
+          onPress={() => {
+            if (onLogout) {
+              onLogout();
+            } else {
+              setShowPasswordLogin(true);
+            }
+          }}
+          activeOpacity={0.7}
         >
-          <Text style={styles.forgotPinText}>Esqueci meu PIN</Text>
+          <Text style={styles.footerLinkText}>Acessar outra conta Nexo</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -320,67 +353,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#090a0d',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 28,
   },
-  autoBioContainer: {
+  contentBox: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
-  biometricCircleLarge: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: 'rgba(255, 85, 0, 0.08)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 85, 0, 0.35)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 36,
-    position: 'relative',
-  },
-  biometricIconLarge: {
-    fontSize: 52,
-  },
-  biometricSpinner: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-  },
-  autoBioStatus: {
-    color: '#9ca3af',
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 24,
-  },
-  fallbackTextButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  fallbackButtonLabel: {
-    color: '#ff5500',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  header: {
-    alignItems: 'center',
-    marginTop: 16,
+    paddingHorizontal: 28,
   },
   brandBadge: {
     backgroundColor: 'rgba(255, 85, 0, 0.12)',
     borderWidth: 1,
     borderColor: 'rgba(255, 85, 0, 0.3)',
     borderRadius: 20,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 5,
-    marginBottom: 14,
+    marginBottom: 16,
   },
   brandBadgeText: {
     color: '#ff5500',
@@ -389,109 +376,201 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   greetingTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
     color: '#ffffff',
     letterSpacing: -0.5,
     marginBottom: 6,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 13,
     color: '#9ca3af',
     textAlign: 'center',
+    marginBottom: 28,
   },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  biometricCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 85, 0, 0.08)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 85, 0, 0.4)',
     alignItems: 'center',
-    gap: 18,
-    marginVertical: 16,
+    justifyContent: 'center',
+    marginBottom: 20,
+    position: 'relative',
+    shadowColor: '#ff5500',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
   },
-  dot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: '#374151',
-    backgroundColor: 'transparent',
+  biometricIcon: {
+    fontSize: 56,
   },
-  dotFilled: {
-    backgroundColor: '#ff5500',
-    borderColor: '#ff5500',
-    transform: [{ scale: 1.15 }],
+  spinnerOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  dotError: {
-    borderColor: '#ef4444',
-    backgroundColor: '#ef4444',
+  statusLabel: {
+    color: '#9ca3af',
+    fontSize: 13,
+    fontWeight: '500',
+    marginBottom: 24,
   },
   errorText: {
     color: '#ef4444',
     fontSize: 12,
     textAlign: 'center',
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  quickAccessRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 12,
-    marginBottom: 14,
-  },
-  quickAuthButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  quickAuthIcon: {
-    fontSize: 15,
-  },
-  quickAuthLabel: {
-    color: '#e5e7eb',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  keypad: {
+    marginBottom: 16,
     paddingHorizontal: 12,
+  },
+  actionButtonGroup: {
+    width: '100%',
     gap: 12,
-  },
-  keyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  keyButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  keyText: {
-    fontSize: 26,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  specialKeyButton: {
-    backgroundColor: 'transparent',
-  },
-  specialKeyText: {
-    fontSize: 24,
-    color: '#ff5500',
-  },
-  footer: {
-    alignItems: 'center',
     marginTop: 8,
   },
-  forgotPinText: {
+  primaryButton: {
+    width: '100%',
+    backgroundColor: '#ff5500',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 8,
+    shadowColor: '#ff5500',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  primaryButtonIcon: {
+    fontSize: 18,
+  },
+  primaryButtonText: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  devicePasscodeButton: {
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 16,
+    gap: 8,
+  },
+  devicePasscodeIcon: {
+    fontSize: 16,
+  },
+  devicePasscodeText: {
+    color: '#e5e7eb',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emailPasswordButton: {
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emailPasswordText: {
     color: '#9ca3af',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  footerLink: {
+    marginTop: 32,
+    paddingVertical: 8,
+  },
+  footerLinkText: {
+    color: '#6b7280',
     fontSize: 12,
     fontWeight: '500',
+  },
+  formCard: {
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  inputLabel: {
+    color: '#9ca3af',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.5,
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    color: '#ffffff',
+    fontSize: 14,
+  },
+  textLink: {
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  textLinkLabel: {
+    color: '#ff5500',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    paddingVertical: 12,
+  },
+  secondaryButtonText: {
+    color: '#9ca3af',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  cameraBox: {
+    width: '100%',
+    height: 240,
+    backgroundColor: '#050507',
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#ff5500',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 24,
+    padding: 20,
+  },
+  cameraFrameIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  cameraInstruction: {
+    color: '#9ca3af',
+    fontSize: 12,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  loadingOverlay: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    color: '#e5e7eb',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });
