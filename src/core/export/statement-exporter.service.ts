@@ -135,3 +135,4 @@ NEWFILEUID:NONE
     return header + rows + `\n========================================================\nDocumento gerado automaticamente pelo sistema Nexo Finance.\n`;
   }
 }
+

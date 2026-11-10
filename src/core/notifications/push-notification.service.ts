@@ -127,3 +127,4 @@ export class PushNotificationService {
     PushNotificationService._history = [];
   }
 }
+

@@ -41,6 +41,8 @@ interface DashboardScreenProps {
   readonly onOpenStatement: () => void;
   readonly onOpenCards: () => void;
   readonly onOpenStreetMode: () => void;
+  readonly onOpenQrScanner: () => void;
+  readonly onOpenPierre: () => void;
   readonly onLockApp: () => void;
 }
 
@@ -53,6 +55,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onOpenStatement,
   onOpenCards,
   onOpenStreetMode,
+  onOpenQrScanner,
+  onOpenPierre,
   onLockApp,
 }) => {
   const [hideBalances, setHideBalances] = useState(false);
@@ -225,6 +229,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         >
           {[
             { id: 'pix', label: 'Transferir Pix', icon: '⚡', onPress: onOpenPix, badge: 'Face ID' },
+            { id: 'scan', label: 'Pagar QR', icon: '📷', onPress: onOpenQrScanner },
+            { id: 'pierre', label: 'Pierre IA', icon: '✨', onPress: onOpenPierre, badge: 'IA' },
             { id: 'statement', label: 'Extrato', icon: '📄', onPress: onOpenStatement },
             { id: 'cards', label: 'Cartões', icon: '💳', onPress: onOpenCards },
             { id: 'charge', label: 'Cobrar QR', icon: '📲', onPress: () => void handleChargeQr() },

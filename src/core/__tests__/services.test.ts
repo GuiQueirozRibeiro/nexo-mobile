@@ -81,3 +81,4 @@ describe('Serviços Adicionais Mobile (Notificações e Exportação OFX)', () =
     expect(history[0]?.category).toBe('PIX_IN');
   });
 });
+

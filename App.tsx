@@ -22,6 +22,8 @@ import { SecurityLimitsScreen } from './src/presentation/mobile/screens/Security
 import { StatementScreen } from './src/presentation/mobile/screens/StatementScreen';
 import { CardsScreen } from './src/presentation/mobile/screens/CardsScreen';
 import { StreetModeProtectionScreen } from './src/presentation/mobile/screens/StreetModeProtectionScreen';
+import { PixQrScannerScreen } from './src/presentation/mobile/screens/PixQrScannerScreen';
+import { PierreAssistantScreen } from './src/presentation/mobile/screens/PierreAssistantScreen';
 
 export const nexoBffClient = new NexoBffApiDataSource(
   'https://nexo.eximiatech.com.br',
@@ -30,11 +32,13 @@ export const nexoBffClient = new NexoBffApiDataSource(
 type ActiveScreen =
   | 'DASHBOARD'
   | 'PIX_TRANSFER'
+  | 'PIX_QR_SCANNER'
   | 'KYC_VERIFICATION'
   | 'SECURITY_LIMITS'
   | 'STATEMENT'
   | 'CARDS'
-  | 'STREET_MODE';
+  | 'STREET_MODE'
+  | 'PIERRE_ASSISTANT';
 
 export default function App() {
   const [isLocked, setIsLocked] = useState(true);
@@ -91,6 +95,8 @@ export default function App() {
           onOpenStatement={() => setCurrentScreen('STATEMENT')}
           onOpenCards={() => setCurrentScreen('CARDS')}
           onOpenStreetMode={() => setCurrentScreen('STREET_MODE')}
+          onOpenQrScanner={() => setCurrentScreen('PIX_QR_SCANNER')}
+          onOpenPierre={() => setCurrentScreen('PIERRE_ASSISTANT')}
           onLockApp={() => setIsLocked(true)}
         />
       )}
@@ -134,6 +140,19 @@ export default function App() {
           onBack={() => setCurrentScreen('DASHBOARD')}
           onRequestLivenessCheck={() => setCurrentScreen('KYC_VERIFICATION')}
         />
+      )}
+
+      {currentScreen === 'PIX_QR_SCANNER' && (
+        <PixQrScannerScreen
+          onBack={() => setCurrentScreen('DASHBOARD')}
+          onQrDecoded={() => {
+            setCurrentScreen('PIX_TRANSFER');
+          }}
+        />
+      )}
+
+      {currentScreen === 'PIERRE_ASSISTANT' && (
+        <PierreAssistantScreen onBack={() => setCurrentScreen('DASHBOARD')} />
       )}
     </View>
   );
