@@ -13,3 +13,4 @@ Segue a mesma arquitetura de repositórios irmãos homologada no **ArenaX** (`ar
   - `src/core/`: `Either<L, R>`, `Failure`, `Result`, `FlavorConfig`, `BRAZILIAN_BANKS`.
   - `src/domain/`: Entidades OOP, `PixKeyValidator`, `PierreFinancialEngine`, `WebhookReconciliationEngine` e `UseCases`.
   - `src/data/`: `NexoBffApiDataSource`, repositórios e mappers.
+

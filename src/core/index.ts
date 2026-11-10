@@ -14,3 +14,4 @@ export * from './theme/theme-manager';
 export * from './pwa/pwa-manager';
 export * from './firebase/firebase-client';
 export * from './constants/brazilian-banks';
+export * from './security/biometric-security.service';

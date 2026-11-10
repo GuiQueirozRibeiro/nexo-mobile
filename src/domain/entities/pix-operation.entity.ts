@@ -63,6 +63,52 @@ export class PixKeyValidator {
   private constructor() {}
 
   /**
+   * Detecta automaticamente o tipo da chave e valida.
+   */
+  public static detectAndValidate(
+    rawValue: string,
+  ): Either<Failure, { readonly type: PixKeyType; readonly value: string }> {
+    const trimmed = rawValue.trim();
+    if (!trimmed) {
+      return left(new ValidationFailure('Informe a chave PIX de destino.', 'pixKey'));
+    }
+
+    if (trimmed.includes('@')) {
+      return PixKeyValidator.validate('EMAIL', trimmed).map((v) => ({
+        type: 'EMAIL' as PixKeyType,
+        value: v,
+      }));
+    }
+
+    const digitsOnly = trimmed.replace(/\D/g, '');
+    if (digitsOnly.length === 11 && !trimmed.startsWith('+')) {
+      return PixKeyValidator.validate('CPF', trimmed).map((v) => ({
+        type: 'CPF' as PixKeyType,
+        value: v,
+      }));
+    }
+
+    if (digitsOnly.length === 14) {
+      return PixKeyValidator.validate('RANDOM', trimmed).map((v) => ({
+        type: 'RANDOM' as PixKeyType,
+        value: v,
+      }));
+    }
+
+    if (trimmed.startsWith('+') || (digitsOnly.length >= 10 && digitsOnly.length <= 13)) {
+      return PixKeyValidator.validate('PHONE', trimmed).map((v) => ({
+        type: 'PHONE' as PixKeyType,
+        value: v,
+      }));
+    }
+
+    return PixKeyValidator.validate('RANDOM', trimmed).map((v) => ({
+      type: 'RANDOM' as PixKeyType,
+      value: v,
+    }));
+  }
+
+  /**
    * Valida formato de chave PIX de forma exaustiva para cada membro da união `PixKeyType`.
    */
   public static validate(

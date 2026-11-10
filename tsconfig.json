@@ -21,3 +21,4 @@
   "include": ["src/**/*.ts", "src/**/*.tsx", "App.tsx"],
   "exclude": ["node_modules", "dist"]
 }
+

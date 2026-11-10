@@ -197,8 +197,8 @@ export class PierreFinancialEngine {
     }
 
     for (const [, grouped] of expenseByMerchant) {
-      if (grouped.length >= 2) {
-        const sample = grouped[0];
+      const sample = grouped[0];
+      if (grouped.length >= 2 && sample) {
         insights.push({
           id: `insight-dup-${sample.id}`,
           title: `Possível cobrança duplicada: ${sample.merchantName}`,

@@ -87,10 +87,7 @@ export class NexoBffApiDataSource {
       });
       if (!res.ok) {
         return left(
-          new NetworkFailure(
-            `BFF Mobile respondeu com HTTP ${res.status}`,
-            res.status,
-          ),
+          new NetworkFailure(`BFF Mobile respondeu com HTTP ${res.status}`),
         );
       }
       const raw: unknown = await res.json();
@@ -134,8 +131,7 @@ export class NexoBffApiDataSource {
       if (!res.ok) {
         return left(
           new NetworkFailure(
-            'Erro ao consultar saldo Asaas via BFF.',
-            res.status,
+            `Erro ao consultar saldo Asaas via BFF (HTTP ${res.status}).`,
           ),
         );
       }
@@ -177,8 +173,7 @@ export class NexoBffApiDataSource {
           new NetworkFailure(
             isPlainRecord(raw) && hasStringField(raw, 'error')
               ? raw.error
-              : 'Falha ao emitir QR Code PIX no BFF.',
-            res.status,
+              : `Falha ao emitir QR Code PIX no BFF (HTTP ${res.status}).`,
           ),
         );
       }
@@ -230,8 +225,7 @@ export class NexoBffApiDataSource {
           new NetworkFailure(
             isPlainRecord(raw) && hasStringField(raw, 'error')
               ? raw.error
-              : 'Transferência recusada pelo gateway BFF.',
-            res.status,
+              : `Transferência recusada pelo gateway BFF (HTTP ${res.status}).`,
           ),
         );
       }
@@ -269,8 +263,7 @@ export class NexoBffApiDataSource {
         new NetworkFailure(
           isPlainRecord(raw) && hasStringField(raw, 'error')
             ? raw.error
-            : 'Não foi possível gerar Connect Token Open Finance.',
-          res.status,
+            : `Não foi possível gerar Connect Token Open Finance (HTTP ${res.status}).`,
         ),
       );
     } catch {
@@ -309,3 +302,4 @@ export class NexoBffApiDataSource {
     }
   }
 }
+
