@@ -35,11 +35,11 @@
         "VIBRATE"
       ]
     },
+    "owner": "guiqueirozribeiro",
     "extra": {
       "eas": {
-        "projectId": "79a43095-762b-4cdf-b307-fbd1f5bbb5b4"
+        "projectId": "0181d43a-5f59-4c73-90ca-9db10cde7b8a"
       }
-    },
-    "owner": "guilhermequeirozribeiro"
+    }
   }
 }
