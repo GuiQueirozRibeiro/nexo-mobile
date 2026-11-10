@@ -1,13 +1,11 @@
 /**
  * BiometricSecurityService — Serviço de Segurança Biométrica Flexível (Face ID / Sensor Digital Touch ID / PIN)
  *
- * Utiliza o Expo LocalAuthentication com padrões bancários:
- * - Prioridade inteligente: Reconhecimento Facial (Face ID) primeiro; se não suportado,
- *   ativa automaticamente o Sensor Biométrico de Impressão Digital (Touch ID / Fingerprint).
- * - Identificação dinâmica do hardware do aparelho (iOS e Android).
- * - Desbloqueio seguro do aplicativo (App Lock).
- * - Autorização obrigatória para transferências e pagamentos PIX.
- * - Fallback transparente para PIN bancário de segurança.
+ * Padrão Bancário (Nubank, C6, Inter, Santander, KeyClub):
+ * - Prioridade absoluta para Face ID: abre direto ao iniciar o app.
+ * - Suporte flexível para sensor biométrico digital (Touch ID / Fingerprint em Android e iPhones com botão).
+ * - Fallback para a senha nativa do dispositivo (Device Passcode) e PIN bancário de 4 dígitos.
+ * - Zero bloqueio artificial: invoca a API nativa do sistema operacional diretamente.
  */
 
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -61,7 +59,7 @@ export class BiometricSecurityService {
       let shortLabel = 'PIN';
       let icon = '🔢';
 
-      if (hasHardware && isEnrolled) {
+      if (hasHardware) {
         if (biometricTypes.includes('FACIAL_RECOGNITION')) {
           primaryType = 'FACIAL_RECOGNITION';
           label = 'Face ID';
@@ -104,32 +102,33 @@ export class BiometricSecurityService {
 
   /**
    * Solicita autenticação biométrica para desbloquear o aplicativo Nexo.
-   * Dá preferência para Face ID, e se não houver, solicita o sensor de impressão digital.
+   * Abre a caixa nativa do iOS (Face ID) ou Android (Biometria/Digital) diretamente.
    */
-  public async authenticateAppUnlock(): Promise<Either<Failure, boolean>> {
+  public async authenticateAppUnlock(options?: {
+    readonly promptMessage?: string;
+    readonly allowDevicePasscode?: boolean;
+  }): Promise<Either<Failure, boolean>> {
     try {
       const capabilities = await this.getCapabilities();
 
-      if (!capabilities.hasHardware || !capabilities.isEnrolled) {
-        return left(
-          new ValidationFailure(
-            'Biometria não cadastrada no dispositivo. Utilize seu PIN de segurança.',
-          ),
-        );
-      }
-
-      const promptMessage =
+      const defaultPrompt =
         capabilities.primaryType === 'FACIAL_RECOGNITION'
-          ? 'Desbloquear Nexo Finance com Face ID'
+          ? 'Acesse sua conta Nexo com Face ID'
           : capabilities.primaryType === 'FINGERPRINT'
-            ? 'Toque no sensor biométrico para desbloquear'
-            : 'Desbloquear Nexo Finance com Biometria';
+            ? 'Toque no sensor biométrico para entrar'
+            : 'Acesse sua conta Nexo';
 
+      const promptMessage = options?.promptMessage ?? defaultPrompt;
+
+      // Executa a autenticação nativa sem bloqueios sintéticos prévios
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage,
-        cancelLabel: 'Cancelar',
-        fallbackLabel: 'Usar PIN de segurança',
-        disableDeviceFallback: false,
+        cancelLabel: 'Digitar PIN',
+        fallbackLabel:
+          options?.allowDevicePasscode !== false
+            ? 'Usar Senha do Aparelho'
+            : 'Digitar PIN',
+        disableDeviceFallback: options?.allowDevicePasscode === false,
       });
 
       if (result.success) {
@@ -139,8 +138,10 @@ export class BiometricSecurityService {
       return left(
         new ValidationFailure(
           result.error === 'user_cancel'
-            ? 'Autenticação cancelada pelo usuário.'
-            : 'Reconhecimento biométrico não confirmado.',
+            ? 'Autenticação cancelada.'
+            : result.error === 'not_enrolled'
+              ? 'Biometria não cadastrada no aparelho. Digite seu PIN.'
+              : 'Reconhecimento biométrico não confirmado.',
         ),
       );
     } catch (err) {
@@ -156,7 +157,6 @@ export class BiometricSecurityService {
 
   /**
    * Solicita confirmação biométrica obrigatória para autorizar transferência PIX.
-   * Utiliza Face ID por padrão ou o sensor biométrico digital se o aparelho não possuir Face ID.
    */
   public async authenticatePixTransfer(params: {
     readonly amountFormatted: string;
@@ -164,14 +164,6 @@ export class BiometricSecurityService {
   }): Promise<Either<Failure, boolean>> {
     try {
       const capabilities = await this.getCapabilities();
-
-      if (!capabilities.hasHardware || !capabilities.isEnrolled) {
-        return left(
-          new ValidationFailure(
-            'Biometria não habilitada para autorizar transferências. Digite seu PIN.',
-          ),
-        );
-      }
 
       const isFaceId = capabilities.primaryType === 'FACIAL_RECOGNITION';
       const isFingerprint = capabilities.primaryType === 'FINGERPRINT';
@@ -185,7 +177,7 @@ export class BiometricSecurityService {
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: promptTitle,
         cancelLabel: 'Cancelar Operação',
-        fallbackLabel: 'Usar PIN Transacional',
+        fallbackLabel: 'Usar Senha do Aparelho',
         disableDeviceFallback: false,
       });
 
