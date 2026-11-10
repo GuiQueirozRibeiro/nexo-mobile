@@ -2,7 +2,7 @@
  * PixTransferScreen.tsx — Tela Nativa de Transferência PIX com Validação Biométrica (Face ID)
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { BiometricSecurityService } from '../../../core';
+import { BiometricSecurityService, type BiometricCapability } from '../../../core';
 import { type PixKeyType, PixKeyValidator } from '../../../domain';
 import type { NexoBffApiDataSource } from '../../../data';
 
@@ -35,6 +35,7 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
   const [keyType, setKeyType] = useState<PixKeyType>('RANDOM');
   const [isValidKey, setIsValidKey] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [capabilities, setCapabilities] = useState<BiometricCapability | null>(null);
   const [receipt, setReceipt] = useState<{
     transferId: string;
     endToEndId: string;
@@ -44,6 +45,16 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
     () => new BiometricSecurityService(),
     [],
   );
+
+  useEffect(() => {
+    let isMounted = true;
+    void biometricService.getCapabilities().then((cap) => {
+      if (isMounted) setCapabilities(cap);
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [biometricService]);
 
   const handleKeyChange = (val: string) => {
     setPixKey(val);
@@ -220,15 +231,25 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
           />
         </View>
 
-        {/* Banner de Segurança Bancária */}
+        {/* Banner de Segurança Bancária Flexível */}
         <View style={styles.securityBanner}>
-          <Text style={styles.securityBannerIcon}>🔒</Text>
+          <Text style={styles.securityBannerIcon}>
+            {capabilities?.icon ?? '🔒'}
+          </Text>
           <View style={{ flex: 1 }}>
             <Text style={styles.securityBannerTitle}>
-              Autenticação Biométrica Obrigatória
+              {capabilities?.primaryType === 'FACIAL_RECOGNITION'
+                ? 'Assinatura via Face ID'
+                : capabilities?.primaryType === 'FINGERPRINT'
+                  ? 'Assinatura via Sensor Biométrico'
+                  : 'Autenticação Bancária de Segurança'}
             </Text>
             <Text style={styles.securityBannerText}>
-              A transferência será assinada via Face ID / Biometria do aparelho e liquidada no Asaas em segundos.
+              {capabilities?.primaryType === 'FACIAL_RECOGNITION'
+                ? 'A transferência será assinada com Face ID e liquidada no Asaas em segundos.'
+                : capabilities?.primaryType === 'FINGERPRINT'
+                  ? 'A transferência será assinada via sensor biométrico de digital e liquidada no Asaas em segundos.'
+                  : 'A transferência será assinada com biometria ou PIN bancário e liquidada no Asaas em segundos.'}
             </Text>
           </View>
         </View>
@@ -247,7 +268,7 @@ export const PixTransferScreen: React.FC<PixTransferScreenProps> = ({
             <ActivityIndicator color="#ffffff" />
           ) : (
             <Text style={styles.primaryButtonText}>
-              Autorizar com Face ID / Biometria
+              {capabilities?.icon ?? '🔒'} Autorizar com {capabilities?.label ?? 'Face ID / Biometria'}
             </Text>
           )}
         </TouchableOpacity>

@@ -91,8 +91,8 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
     setErrorMessage(null);
   };
 
-  const isFaceId = capabilities?.primaryType === 'FACIAL_RECOGNITION';
-  const biometricLabel = isFaceId ? 'Face ID' : 'Digital';
+  const biometricLabel = capabilities?.label ?? 'Face ID / Biometria';
+  const biometricIcon = capabilities?.icon ?? '👤';
 
   return (
     <SafeAreaView style={styles.container}>
@@ -169,16 +169,14 @@ export const AppLockScreen: React.FC<AppLockScreenProps> = ({
         </View>
 
         <View style={styles.keyRow}>
-          {/* Botão de Biometria / Face ID */}
+          {/* Botão de Biometria Dinâmico (Face ID ou Sensor Digital) */}
           <TouchableOpacity
             style={[styles.keyButton, styles.specialKeyButton]}
             onPress={() => void triggerBiometricUnlock()}
             disabled={isBiometricPending}
             activeOpacity={0.7}
           >
-            <Text style={styles.specialKeyText}>
-              {isFaceId ? '👤' : '👆'}
-            </Text>
+            <Text style={styles.specialKeyText}>{biometricIcon}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity

@@ -4,10 +4,13 @@ export const AuthenticationType = {
   IRIS: 3,
 };
 
+let mockSupportedTypes = [AuthenticationType.FACIAL_RECOGNITION];
+
+export const __setMockSupportedTypes = (types: number[]) => {
+  mockSupportedTypes = types;
+};
+
 export const hasHardwareAsync = async () => true;
 export const isEnrolledAsync = async () => true;
-export const supportedAuthenticationTypesAsync = async () => [
-  AuthenticationType.FACIAL_RECOGNITION,
-];
+export const supportedAuthenticationTypesAsync = async () => mockSupportedTypes;
 export const authenticateAsync = async () => ({ success: true });
-

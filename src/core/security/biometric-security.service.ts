@@ -1,11 +1,13 @@
 /**
- * BiometricSecurityService — Serviço de Segurança Biométrica (Face ID / Touch ID / Biometria Android)
+ * BiometricSecurityService — Serviço de Segurança Biométrica Flexível (Face ID / Sensor Digital Touch ID / PIN)
  *
  * Utiliza o Expo LocalAuthentication com padrões bancários:
- * - Validação de hardware presente e biometria configurada.
+ * - Prioridade inteligente: Reconhecimento Facial (Face ID) primeiro; se não suportado,
+ *   ativa automaticamente o Sensor Biométrico de Impressão Digital (Touch ID / Fingerprint).
+ * - Identificação dinâmica do hardware do aparelho (iOS e Android).
  * - Desbloqueio seguro do aplicativo (App Lock).
  * - Autorização obrigatória para transferências e pagamentos PIX.
- * - Fallback para PIN de segurança bancário de 4 a 6 dígitos.
+ * - Fallback transparente para PIN bancário de segurança.
  */
 
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -18,11 +20,15 @@ export interface BiometricCapability {
   readonly isEnrolled: boolean;
   readonly biometricTypes: readonly BiometricType[];
   readonly primaryType: BiometricType;
+  readonly label: string;
+  readonly shortLabel: string;
+  readonly icon: string;
 }
 
 export class BiometricSecurityService {
   /**
-   * Identifica os recursos de biometria disponíveis no dispositivo.
+   * Identifica os recursos de biometria disponíveis no dispositivo,
+   * priorizando Face ID quando presente, ou ativando Sensor Digital / Touch ID como alternativa.
    */
   public async getCapabilities(): Promise<BiometricCapability> {
     try {
@@ -45,17 +51,42 @@ export class BiometricSecurityService {
         biometricTypes.push('NONE');
       }
 
-      const primaryType: BiometricType = biometricTypes.includes('FACIAL_RECOGNITION')
-        ? 'FACIAL_RECOGNITION'
-        : biometricTypes.includes('FINGERPRINT')
-          ? 'FINGERPRINT'
-          : 'NONE';
+      // Prioridade 1: Face ID (Reconhecimento Facial)
+      // Prioridade 2: Sensor Biométrico (Digital / Touch ID)
+      // Prioridade 3: Reconhecimento de Íris
+      // Fallback: PIN de segurança
+      let primaryType: BiometricType = 'NONE';
+      let label = 'PIN de Segurança';
+      let shortLabel = 'PIN';
+      let icon = '🔢';
+
+      if (hasHardware && isEnrolled) {
+        if (biometricTypes.includes('FACIAL_RECOGNITION')) {
+          primaryType = 'FACIAL_RECOGNITION';
+          label = 'Face ID';
+          shortLabel = 'Face ID';
+          icon = '👤';
+        } else if (biometricTypes.includes('FINGERPRINT')) {
+          primaryType = 'FINGERPRINT';
+          label = 'Sensor Biométrico (Digital)';
+          shortLabel = 'Digital';
+          icon = '👆';
+        } else if (biometricTypes.includes('IRIS')) {
+          primaryType = 'IRIS';
+          label = 'Leitura de Íris';
+          shortLabel = 'Íris';
+          icon = '👁️';
+        }
+      }
 
       return {
         hasHardware,
         isEnrolled,
         biometricTypes,
         primaryType,
+        label,
+        shortLabel,
+        icon,
       };
     } catch {
       return {
@@ -63,12 +94,16 @@ export class BiometricSecurityService {
         isEnrolled: false,
         biometricTypes: ['NONE'],
         primaryType: 'NONE',
+        label: 'PIN de Segurança',
+        shortLabel: 'PIN',
+        icon: '🔢',
       };
     }
   }
 
   /**
    * Solicita autenticação biométrica para desbloquear o aplicativo Nexo.
+   * Dá preferência para Face ID, e se não houver, solicita o sensor de impressão digital.
    */
   public async authenticateAppUnlock(): Promise<Either<Failure, boolean>> {
     try {
@@ -82,8 +117,15 @@ export class BiometricSecurityService {
         );
       }
 
+      const promptMessage =
+        capabilities.primaryType === 'FACIAL_RECOGNITION'
+          ? 'Desbloquear Nexo Finance com Face ID'
+          : capabilities.primaryType === 'FINGERPRINT'
+            ? 'Toque no sensor biométrico para desbloquear'
+            : 'Desbloquear Nexo Finance com Biometria';
+
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Desbloquear Nexo Finance',
+        promptMessage,
         cancelLabel: 'Cancelar',
         fallbackLabel: 'Usar PIN de segurança',
         disableDeviceFallback: false,
@@ -113,6 +155,7 @@ export class BiometricSecurityService {
 
   /**
    * Solicita confirmação biométrica obrigatória para autorizar transferência PIX.
+   * Utiliza Face ID por padrão ou o sensor biométrico digital se o aparelho não possuir Face ID.
    */
   public async authenticatePixTransfer(params: {
     readonly amountFormatted: string;
@@ -130,9 +173,13 @@ export class BiometricSecurityService {
       }
 
       const isFaceId = capabilities.primaryType === 'FACIAL_RECOGNITION';
+      const isFingerprint = capabilities.primaryType === 'FINGERPRINT';
+
       const promptTitle = isFaceId
         ? `Confirmar PIX de ${params.amountFormatted} com Face ID`
-        : `Confirmar PIX de ${params.amountFormatted} com Biometria`;
+        : isFingerprint
+          ? `Confirmar PIX de ${params.amountFormatted} no Sensor Digital`
+          : `Confirmar PIX de ${params.amountFormatted} com Biometria`;
 
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: promptTitle,
@@ -163,4 +210,3 @@ export class BiometricSecurityService {
     }
   }
 }
-

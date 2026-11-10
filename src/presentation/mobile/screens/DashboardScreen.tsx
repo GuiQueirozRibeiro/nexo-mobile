@@ -228,7 +228,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           contentContainerStyle={styles.quickActionsContainer}
         >
           {[
-            { id: 'pix', label: 'Transferir Pix', icon: '⚡', onPress: onOpenPix, badge: 'Face ID' },
+            { id: 'pix', label: 'Transferir Pix', icon: '⚡', onPress: onOpenPix, badge: 'Biometria' },
             { id: 'scan', label: 'Pagar QR', icon: '📷', onPress: onOpenQrScanner },
             { id: 'pierre', label: 'Pierre IA', icon: '✨', onPress: onOpenPierre, badge: 'IA' },
             { id: 'statement', label: 'Extrato', icon: '📄', onPress: onOpenStatement },
