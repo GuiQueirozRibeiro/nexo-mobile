@@ -40,6 +40,7 @@ interface DashboardScreenProps {
   readonly onOpenLimits: () => void;
   readonly onOpenStatement: () => void;
   readonly onOpenCards: () => void;
+  readonly onOpenStreetMode: () => void;
   readonly onLockApp: () => void;
 }
 
@@ -51,6 +52,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onOpenLimits,
   onOpenStatement,
   onOpenCards,
+  onOpenStreetMode,
   onLockApp,
 }) => {
   const [hideBalances, setHideBalances] = useState(false);
@@ -228,6 +230,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             { id: 'charge', label: 'Cobrar QR', icon: '📲', onPress: () => void handleChargeQr() },
             { id: 'bank', label: 'Conectar Banco', icon: '🏛️', onPress: () => void handleConnectBank() },
             { id: 'limits', label: 'Limites BACEN', icon: '🛡️', onPress: onOpenLimits },
+            { id: 'street', label: 'Modo Rua', icon: '📍', onPress: onOpenStreetMode, badge: 'Protegido' },
             { id: 'kyc', label: 'Verificar KYC', icon: '🪪', onPress: onOpenKyc },
           ].map((act) => (
             <TouchableOpacity

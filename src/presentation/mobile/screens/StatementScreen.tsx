@@ -15,6 +15,8 @@ import {
   Alert,
 } from 'react-native';
 
+import { StatementExporterService } from '../../../core';
+
 export interface MobileTransaction {
   readonly id: string;
   readonly description: string;
@@ -82,6 +84,31 @@ export const StatementScreen: React.FC<StatementScreenProps> = ({
     }
   };
 
+  const handleExportOfx = async () => {
+    try {
+      const ofxContent = StatementExporterService.generateOfx({
+        bankName: 'Nexo Bank Pagamentos S.A.',
+        bankCode: '341',
+        accountNumber: '99412-8',
+        transactions: transactions.map((t) => ({
+          id: t.id,
+          description: t.description,
+          amount: t.amount,
+          type: t.type,
+          dateIso: new Date().toISOString(),
+          category: t.category,
+        })),
+      });
+
+      await Share.share({
+        title: 'Extrato Bancário Nexo (OFX)',
+        message: ofxContent,
+      });
+    } catch {
+      Alert.alert('Erro', 'Não foi possível exportar o arquivo OFX.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.topBar}>
@@ -89,7 +116,12 @@ export const StatementScreen: React.FC<StatementScreenProps> = ({
           <Text style={styles.backButtonText}>← Voltar</Text>
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>Extrato e Lançamentos</Text>
-        <View style={{ width: 60 }} />
+        <TouchableOpacity
+          onPress={() => void handleExportOfx()}
+          style={styles.exportHeaderButton}
+        >
+          <Text style={styles.exportHeaderText}>OFX</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Detalhe do Comprovante (Quando uma transação é selecionada) */}
@@ -474,4 +506,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
+  exportHeaderButton: {
+    backgroundColor: 'rgba(255, 85, 0, 0.15)',
+    borderWidth: 1,
+    borderColor: '#ff5500',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  exportHeaderText: {
+    color: '#ff5500',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
 });
+

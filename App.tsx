@@ -21,6 +21,7 @@ import { KycIdentityVerificationScreen } from './src/presentation/mobile/screens
 import { SecurityLimitsScreen } from './src/presentation/mobile/screens/SecurityLimitsScreen';
 import { StatementScreen } from './src/presentation/mobile/screens/StatementScreen';
 import { CardsScreen } from './src/presentation/mobile/screens/CardsScreen';
+import { StreetModeProtectionScreen } from './src/presentation/mobile/screens/StreetModeProtectionScreen';
 
 export const nexoBffClient = new NexoBffApiDataSource(
   'https://nexo.eximiatech.com.br',
@@ -32,7 +33,8 @@ type ActiveScreen =
   | 'KYC_VERIFICATION'
   | 'SECURITY_LIMITS'
   | 'STATEMENT'
-  | 'CARDS';
+  | 'CARDS'
+  | 'STREET_MODE';
 
 export default function App() {
   const [isLocked, setIsLocked] = useState(true);
@@ -88,6 +90,7 @@ export default function App() {
           onOpenLimits={() => setCurrentScreen('SECURITY_LIMITS')}
           onOpenStatement={() => setCurrentScreen('STATEMENT')}
           onOpenCards={() => setCurrentScreen('CARDS')}
+          onOpenStreetMode={() => setCurrentScreen('STREET_MODE')}
           onLockApp={() => setIsLocked(true)}
         />
       )}
@@ -123,6 +126,13 @@ export default function App() {
         <CardsScreen
           onBack={() => setCurrentScreen('DASHBOARD')}
           onPayWithPix={() => setCurrentScreen('PIX_TRANSFER')}
+        />
+      )}
+
+      {currentScreen === 'STREET_MODE' && (
+        <StreetModeProtectionScreen
+          onBack={() => setCurrentScreen('DASHBOARD')}
+          onRequestLivenessCheck={() => setCurrentScreen('KYC_VERIFICATION')}
         />
       )}
     </View>

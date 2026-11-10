@@ -4,19 +4,26 @@
     "slug": "nexo-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "scheme": "nexo",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "br.com.eximiatech.nexo",
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Autorize transferências PIX instantâneas com Face ID no Nexo Finance."
+        "NSFaceIDUsageDescription": "Autorize transferências PIX instantâneas e desbloqueio do app com Face ID no Nexo Finance.",
+        "NSCameraUsageDescription": "O Nexo Finance utiliza a câmera exclusivamente para validação de documentos oficiais e prova de vida facial (KYC)."
       }
     },
     "android": {
       "package": "br.com.eximiatech.nexo",
-      "versionCode": 1
+      "versionCode": 1,
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "CAMERA",
+        "VIBRATE"
+      ]
     }
   }
 }
-

@@ -16,4 +16,6 @@ export const AppState = {
   addEventListener: () => ({ remove: () => {} }),
 };
 export const RefreshControl = 'RefreshControl';
+export const Platform = { OS: 'ios' };
+export const Share = { share: async () => ({}) };
 
