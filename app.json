@@ -24,6 +24,12 @@
         "CAMERA",
         "VIBRATE"
       ]
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "79a43095-762b-4cdf-b307-fbd1f5bbb5b4"
+      }
+    },
+    "owner": "guilhermequeirozribeiro"
   }
 }

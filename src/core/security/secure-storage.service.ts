@@ -77,3 +77,4 @@ export class SecureStorageService {
     SecureStorageService._memoryStore.delete(SecureStorageService.SESSION_KEY);
   }
 }
+
