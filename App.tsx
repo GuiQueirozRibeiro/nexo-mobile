@@ -19,6 +19,8 @@ import { DashboardScreen } from './src/presentation/mobile/screens/DashboardScre
 import { PixTransferScreen } from './src/presentation/mobile/screens/PixTransferScreen';
 import { KycIdentityVerificationScreen } from './src/presentation/mobile/screens/KycIdentityVerificationScreen';
 import { SecurityLimitsScreen } from './src/presentation/mobile/screens/SecurityLimitsScreen';
+import { StatementScreen } from './src/presentation/mobile/screens/StatementScreen';
+import { CardsScreen } from './src/presentation/mobile/screens/CardsScreen';
 
 export const nexoBffClient = new NexoBffApiDataSource(
   'https://nexo.eximiatech.com.br',
@@ -28,7 +30,9 @@ type ActiveScreen =
   | 'DASHBOARD'
   | 'PIX_TRANSFER'
   | 'KYC_VERIFICATION'
-  | 'SECURITY_LIMITS';
+  | 'SECURITY_LIMITS'
+  | 'STATEMENT'
+  | 'CARDS';
 
 export default function App() {
   const [isLocked, setIsLocked] = useState(true);
@@ -82,6 +86,8 @@ export default function App() {
           onOpenPix={() => setCurrentScreen('PIX_TRANSFER')}
           onOpenKyc={() => setCurrentScreen('KYC_VERIFICATION')}
           onOpenLimits={() => setCurrentScreen('SECURITY_LIMITS')}
+          onOpenStatement={() => setCurrentScreen('STATEMENT')}
+          onOpenCards={() => setCurrentScreen('CARDS')}
           onLockApp={() => setIsLocked(true)}
         />
       )}
@@ -107,6 +113,17 @@ export default function App() {
 
       {currentScreen === 'SECURITY_LIMITS' && (
         <SecurityLimitsScreen onBack={() => setCurrentScreen('DASHBOARD')} />
+      )}
+
+      {currentScreen === 'STATEMENT' && (
+        <StatementScreen onBack={() => setCurrentScreen('DASHBOARD')} />
+      )}
+
+      {currentScreen === 'CARDS' && (
+        <CardsScreen
+          onBack={() => setCurrentScreen('DASHBOARD')}
+          onPayWithPix={() => setCurrentScreen('PIX_TRANSFER')}
+        />
       )}
     </View>
   );

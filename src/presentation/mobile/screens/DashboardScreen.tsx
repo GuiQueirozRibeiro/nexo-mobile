@@ -38,6 +38,8 @@ interface DashboardScreenProps {
   readonly onOpenPix: () => void;
   readonly onOpenKyc: () => void;
   readonly onOpenLimits: () => void;
+  readonly onOpenStatement: () => void;
+  readonly onOpenCards: () => void;
   readonly onLockApp: () => void;
 }
 
@@ -47,6 +49,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   onOpenPix,
   onOpenKyc,
   onOpenLimits,
+  onOpenStatement,
+  onOpenCards,
   onLockApp,
 }) => {
   const [hideBalances, setHideBalances] = useState(false);
@@ -219,6 +223,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         >
           {[
             { id: 'pix', label: 'Transferir Pix', icon: '⚡', onPress: onOpenPix, badge: 'Face ID' },
+            { id: 'statement', label: 'Extrato', icon: '📄', onPress: onOpenStatement },
+            { id: 'cards', label: 'Cartões', icon: '💳', onPress: onOpenCards },
             { id: 'charge', label: 'Cobrar QR', icon: '📲', onPress: () => void handleChargeQr() },
             { id: 'bank', label: 'Conectar Banco', icon: '🏛️', onPress: () => void handleConnectBank() },
             { id: 'limits', label: 'Limites BACEN', icon: '🛡️', onPress: onOpenLimits },
@@ -305,7 +311,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Últimos Lançamentos</Text>
-            <Text style={styles.sectionSubtitle}>Tempo Real</Text>
+            <TouchableOpacity onPress={onOpenStatement}>
+              <Text style={styles.sectionActionText}>Ver Todos →</Text>
+            </TouchableOpacity>
           </View>
 
           {recentTransactions.length === 0 ? (
