@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet, AppState, type AppStateStatus } from 'react-native';
+import { registerRootComponent } from 'expo';
 import { StatusBar } from 'expo-status-bar';
 import { NexoBffApiDataSource } from './src/data';
 import { AppLockScreen } from './src/presentation/mobile/screens/AppLockScreen';
@@ -164,3 +165,5 @@ const styles = StyleSheet.create({
     backgroundColor: '#0b0c0e',
   },
 });
+
+registerRootComponent(App);

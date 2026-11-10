@@ -24,7 +24,8 @@ import {
   getFirestore,
   setDoc,
 } from 'firebase/firestore';
-import { type Either, type Failure, NetworkFailure, left, right } from '../index';
+import { type Either, left, right } from '../either/either';
+import { type Failure, NetworkFailure } from '../errors/failures';
 
 export interface NexoAuthUser {
   readonly uid: string;

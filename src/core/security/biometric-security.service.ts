@@ -11,7 +11,8 @@
  */
 
 import * as LocalAuthentication from 'expo-local-authentication';
-import { left, right, type Either, type Failure, ValidationFailure } from '../index';
+import { type Either, left, right } from '../either/either';
+import { type Failure, ValidationFailure } from '../errors/failures';
 
 export type BiometricType = 'FACIAL_RECOGNITION' | 'FINGERPRINT' | 'IRIS' | 'NONE';
 
