@@ -23,7 +23,6 @@
     },
     "android": {
       "package": "br.com.eximiatech.nexo",
-      "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0b0c0e"
