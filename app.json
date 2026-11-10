@@ -5,6 +5,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b0c0e"
+    },
     "scheme": "nexo",
     "newArchEnabled": true,
     "ios": {
@@ -18,6 +24,10 @@
     "android": {
       "package": "br.com.eximiatech.nexo",
       "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0b0c0e"
+      },
       "permissions": [
         "USE_BIOMETRIC",
         "USE_FINGERPRINT",
