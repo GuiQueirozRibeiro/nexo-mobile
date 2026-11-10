@@ -10,3 +10,4 @@ export const supportedAuthenticationTypesAsync = async () => [
   AuthenticationType.FACIAL_RECOGNITION,
 ];
 export const authenticateAsync = async () => ({ success: true });
+

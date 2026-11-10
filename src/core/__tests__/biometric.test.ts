@@ -34,3 +34,4 @@ describe('BiometricSecurityService — Segurança Bancária Mobile', () => {
     }
   });
 });
+

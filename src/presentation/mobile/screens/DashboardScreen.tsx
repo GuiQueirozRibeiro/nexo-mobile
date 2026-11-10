@@ -37,6 +37,7 @@ interface DashboardScreenProps {
   readonly bffClient: NexoBffApiDataSource;
   readonly onOpenPix: () => void;
   readonly onOpenKyc: () => void;
+  readonly onOpenLimits: () => void;
   readonly onLockApp: () => void;
 }
 
@@ -45,6 +46,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   bffClient,
   onOpenPix,
   onOpenKyc,
+  onOpenLimits,
   onLockApp,
 }) => {
   const [hideBalances, setHideBalances] = useState(false);
@@ -219,6 +221,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             { id: 'pix', label: 'Transferir Pix', icon: '⚡', onPress: onOpenPix, badge: 'Face ID' },
             { id: 'charge', label: 'Cobrar QR', icon: '📲', onPress: () => void handleChargeQr() },
             { id: 'bank', label: 'Conectar Banco', icon: '🏛️', onPress: () => void handleConnectBank() },
+            { id: 'limits', label: 'Limites BACEN', icon: '🛡️', onPress: onOpenLimits },
             { id: 'kyc', label: 'Verificar KYC', icon: '🪪', onPress: onOpenKyc },
           ].map((act) => (
             <TouchableOpacity

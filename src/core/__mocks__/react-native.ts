@@ -16,3 +16,4 @@ export const AppState = {
   addEventListener: () => ({ remove: () => {} }),
 };
 export const RefreshControl = 'RefreshControl';
+
